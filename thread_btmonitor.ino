@@ -72,35 +72,41 @@ void setup() {
   SerialBT.begin("KNO_AP5");
   Serial.println("The device started, now you can pair it with bluetooth!");
   
-  ledcSetup(0,FREQ, RESOLUTION); // задаём настройки ШИМ-канала:     
+  ledcSetup(0, FREQ, RESOLUTION); // задаём настройки ШИМ-канала:     
   ledcAttachPin(LED0, 0); // подключаем ШИМ-канал к пину светодиода 
-  ledcSetup(2,FREQ, RESOLUTION);     
+  ledcSetup(2, FREQ, RESOLUTION);     
   ledcAttachPin(LED2, 2); 
-  ledcSetup(4,FREQ, RESOLUTION);     
+  ledcSetup(4, FREQ, RESOLUTION);     
   ledcAttachPin(LED4, 4); 
-  ledcSetup(23,FREQ, RESOLUTION);     
+  ledcSetup(23, FREQ, RESOLUTION);     
   ledcAttachPin(LED23, 23); 
 
-  EEPROM.begin(256); // Инициализация EEPROM с размером 512 байт.
-
+  EEPROM.begin(128); // Инициализация EEPROM с размером 128 байт.
+  Serial.println(EEPROM.read(0));
+  Serial.println(EEPROM.read(1));
+  Serial.println(EEPROM.read(2));
+  if(EEPROM.read(2) == 80) { // Берем данные из энергосберегающей памяти. ASCII 80 = P.
+      MODE = 'P';
+    }
+  else if(EEPROM.read(2) == 77) { // Берем данные из энергосберегающей памяти. ASCII 77 = M.
+      MODE = 'M';
+    } 
   if (MODE == 'P') {
     ducycycle_p();
   }
-  else if (MODE == 'M') {
-    ducycycle_m();
+  else if (MODE == 'M') { // TODO
+    ducycycle_m(); // Ставить только после функции ducllycle_p
   }
-  if(EEPROM.read(0) == 0 or EEPROM.read(0) == 2 or  EEPROM.read(0) == 4 or  EEPROM.read(0) == 23) {
+  if(EEPROM.read(0) == 0 or EEPROM.read(0) == 2 or EEPROM.read(0) == 4 or EEPROM.read(0) == 23) {
     LED = EEPROM.read(0); // Берем данные из энергосберегающей памяти.
     check_dutycle();
   }
-  if(EEPROM.read(2) == 'P' or EEPROM.read(2) == 'M') {
-    MODE = EEPROM.read(2); // Берем данные из энергосберегающей памяти.
-  }
-  if(EEPROM.read(1) == 0 or EEPROM.read(1) == 1 or  EEPROM.read(1) == 2 or  EEPROM.read(1) == 3 or  EEPROM.read(1) == 4 or  EEPROM.read(1) == 5 or  EEPROM.read(1) == 6 or  EEPROM.read(1) == 7 or  EEPROM.read(1) == 8
-      or  EEPROM.read(1) == 9 or  EEPROM.read(1) == 10 or  EEPROM.read(1) == 11) {
+   if(EEPROM.read(1) == 0 or EEPROM.read(1) == 1 or EEPROM.read(1) == 2 or EEPROM.read(1) == 3 or EEPROM.read(1) == 4 or EEPROM.read(1) == 5 or EEPROM.read(1) == 6 or EEPROM.read(1) == 7 or EEPROM.read(1) == 8
+      or EEPROM.read(1) == 9 or EEPROM.read(1) == 10 or EEPROM.read(1) == 11) {
     GLIMPS = EEPROM.read(1); // Берем данные из энергосберегающей памяти.
   }
- 
+
+  Serial.println(DUTYCYCLE);
   Wire.begin();
   lightMeter.begin();
  // Создаем задачии для разных ядер ESP32, для синхронизации процессов.
@@ -198,7 +204,6 @@ void Task2code( void * pvParameters ) {
       ledcWrite(LED2, LOW);
       ledcWrite(LED4, LOW);
       ledcWrite(LED23, LOW);
-
     }
     else if(command == 'Y') {
       LED = 2;
@@ -208,15 +213,15 @@ void Task2code( void * pvParameters ) {
       ledcWrite(LED4, LOW);
       ledcWrite(LED23, LOW);
     }
-    else if(command == 'G') {
+    else if(command == 'W') {
       LED = 4;
       write_led();
       DUTYCYCLE = LED4_DUTYCYCLE; 
-      digitalWrite(LED0, LOW);
-      digitalWrite(LED2, LOW);
-      digitalWrite(LED23, LOW);
+      ledcWrite(LED0, LOW);
+      ledcWrite(LED2, LOW);
+      ledcWrite(LED23, LOW);
     }
-    else if(command == 'W') {
+    else if(command == 'G') {
       LED = 23;
       write_led();
       DUTYCYCLE = LED23_DUTYCYCLE; 
@@ -328,7 +333,7 @@ void ducycycle_p() { // Включение дальности 5км.
   LED0_DUTYCYCLE = bitpercent_led0;
   LED2_DUTYCYCLE = bitpercent_led2;
   LED4_DUTYCYCLE = bitpercent_led4;
-  LED23_DUTYCYCLE = bitpercent_led2;
+  LED23_DUTYCYCLE = bitpercent_led23;
 }
 
 void ducycycle_m() { // Включения дальности 10км.
@@ -344,7 +349,7 @@ void ducycycle_m() { // Включения дальности 10км.
   LED0_DUTYCYCLE = bitpercent_led0;
   LED2_DUTYCYCLE = bitpercent_led2;
   LED4_DUTYCYCLE = bitpercent_led4;
-  LED23_DUTYCYCLE = bitpercent_led2;
+  LED23_DUTYCYCLE = bitpercent_led23;
 }
 
 void write_mode() // Запись данных о включенном фонаре в EEPROM.
