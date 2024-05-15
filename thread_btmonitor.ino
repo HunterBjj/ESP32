@@ -31,6 +31,7 @@ G - зеленый
 W - белый
 L - выключить
 */
+
 #include <BH1750.h>
 #include <Wire.h>
 #include <chrono>
@@ -41,7 +42,7 @@ L - выключить
 #define LED0 0 // Красный.
 #define LED2 2 // Желтый.
 #define LED4 4 // Белый.
-#define LED23 23 // Зеленый.
+#define LED13 13 // Зеленый.
 #define BATTERY 15 // Выход для баттареи.
 
 const int RESOLUTION = 8;
@@ -54,7 +55,7 @@ int DUTYCYCLE; // Дальность свечения.
 int LED0_DUTYCYCLE;
 int LED2_DUTYCYCLE;
 int LED4_DUTYCYCLE;
-int LED23_DUTYCYCLE; 
+int LED13_DUTYCYCLE; 
 
 TaskHandle_t Task1; // Создаем задачи.
 TaskHandle_t Task2;
@@ -78,28 +79,26 @@ void setup() {
   ledcAttachPin(LED2, 2); 
   ledcSetup(4, FREQ, RESOLUTION);     
   ledcAttachPin(LED4, 4); 
-  ledcSetup(23, FREQ, RESOLUTION);     
-  ledcAttachPin(LED23, 23); 
+  ledcSetup(13, FREQ, RESOLUTION);     
+  ledcAttachPin(LED13, 13); 
 
   EEPROM.begin(128); // Инициализация EEPROM с размером 128 байт.
-  Serial.println(EEPROM.read(0));
-  Serial.println(EEPROM.read(1));
-  Serial.println(EEPROM.read(2));
+
   if(EEPROM.read(2) == 80) { // Берем данные из энергосберегающей памяти. ASCII 80 = P.
-      MODE = 'P';
+    MODE = 'P';
     }
   else if(EEPROM.read(2) == 77) { // Берем данные из энергосберегающей памяти. ASCII 77 = M.
-      MODE = 'M';
+    MODE = 'M';                                                                       
     } 
-  if (MODE == 'P') {
+  if(MODE == 'P') {
     ducycycle_p();
   }
-  else if (MODE == 'M') { // TODO
-    ducycycle_m(); // Ставить только после функции ducllycle_p
+  else if(MODE == 'M') { 
+    ducycycle_m(); 
   }
-  if(EEPROM.read(0) == 0 or EEPROM.read(0) == 2 or EEPROM.read(0) == 4 or EEPROM.read(0) == 23) {
+  if(EEPROM.read(0) == 0 or EEPROM.read(0) == 2 or EEPROM.read(0) == 4 or EEPROM.read(0) == 13) {
     LED = EEPROM.read(0); // Берем данные из энергосберегающей памяти.
-    check_dutycle();
+    check_dutycle(); // Ставить только после функции ducllycle_
   }
    if(EEPROM.read(1) == 0 or EEPROM.read(1) == 1 or EEPROM.read(1) == 2 or EEPROM.read(1) == 3 or EEPROM.read(1) == 4 or EEPROM.read(1) == 5 or EEPROM.read(1) == 6 or EEPROM.read(1) == 7 or EEPROM.read(1) == 8
       or EEPROM.read(1) == 9 or EEPROM.read(1) == 10 or EEPROM.read(1) == 11) {
@@ -114,6 +113,7 @@ void setup() {
     delay(500); 
   xTaskCreatePinnedToCore(Task2code, "Task2", 10000, NULL, 1, NULL,  1); 
     delay(500); 
+    
 }
 
 
@@ -123,7 +123,7 @@ void Task1code( void * pvParameters ){
   */
   while(true) { //Датчик измерение света.
     float lux = lightMeter.readLightLevel();
-    delay(500);
+    delay(415);
     if(lux < 60 or TESTGLIMPS == true) {  //если ниже 60, то включается выбранный режим, а если выше 80 то выключается.
       Serial.println("lux < 60");
       if(GLIMPS == 0) {
@@ -177,23 +177,24 @@ void Task2code( void * pvParameters ) {
   while(true) {
       float lux = lightMeter.readLightLevel();
       float btr = analogRead(BATTERY);
+      Serial.println("btr: " + String(btr) + " vlt");
       float volt = ((3.3 * btr) / 4095) * 3; 
       Serial.println("Вольт:" + String(volt));
       SerialBT.print(String(volt) + " В");
-      delay(260);
+      delay(210);
       Serial.println("Light: " + String(lux) + " lx");
       SerialBT.print(String(lux) + " ЛК");
-      delay(160);
+      delay(110);
       Serial.println(LED);
       SerialBT.print(LED);
-      delay(280);
+      delay(210);
       Serial.println("-" + String(GLIMPS));  // Добавляем - для кодировки, чтобы не было коллизии в кодировке.
-      delay(190);
+      delay(110);
       SerialBT.print("-" + String(GLIMPS));
-      delay(250);
+      delay(210);
       SerialBT.print(MODE);
   // Оставляем один знак после запятой, для правильной кодировки.
-      delay(700);
+      delay(410);
   if(SerialBT.available()) { // Прием данных с андройд приложения и их дальнейшая обработка. 
     char command = SerialBT.read();
     Serial.println(command);
@@ -203,7 +204,7 @@ void Task2code( void * pvParameters ) {
       DUTYCYCLE = LED0_DUTYCYCLE; 
       ledcWrite(LED2, LOW);
       ledcWrite(LED4, LOW);
-      ledcWrite(LED23, LOW);
+      ledcWrite(LED13, LOW);
     }
     else if(command == 'Y') {
       LED = 2;
@@ -211,7 +212,7 @@ void Task2code( void * pvParameters ) {
       DUTYCYCLE = LED2_DUTYCYCLE; 
       ledcWrite(LED0, LOW);
       ledcWrite(LED4, LOW);
-      ledcWrite(LED23, LOW);
+      ledcWrite(LED13, LOW);
     }
     else if(command == 'W') {
       LED = 4;
@@ -219,12 +220,12 @@ void Task2code( void * pvParameters ) {
       DUTYCYCLE = LED4_DUTYCYCLE; 
       ledcWrite(LED0, LOW);
       ledcWrite(LED2, LOW);
-      ledcWrite(LED23, LOW);
+      ledcWrite(LED13, LOW);
     }
     else if(command == 'G') {
-      LED = 23;
+      LED = 13;
       write_led();
-      DUTYCYCLE = LED23_DUTYCYCLE; 
+      DUTYCYCLE = LED13_DUTYCYCLE; 
       ledcWrite(LED0, LOW);
       ledcWrite(LED2, LOW);
       ledcWrite(LED4, LOW);
@@ -235,7 +236,7 @@ void Task2code( void * pvParameters ) {
       ledcWrite(LED0, LOW);
       ledcWrite(LED2, LOW);
       ledcWrite(LED4, LOW);
-      ledcWrite(LED23, LOW);
+      ledcWrite(LED13, LOW);
     }
     else if(command == 'P') {
       MODE = 'P';
@@ -315,8 +316,8 @@ void check_dutycle() {  //Включает нужный режим на фона
   else if(LED == 4) {
     DUTYCYCLE = LED4_DUTYCYCLE;
     }
-  else if(LED == 23) {
-    DUTYCYCLE = LED23_DUTYCYCLE;
+  else if(LED == 13) {
+    DUTYCYCLE = LED13_DUTYCYCLE;
     }
 }
 
@@ -327,13 +328,13 @@ void ducycycle_p() { // Включение дальности 5км.
   int bitpercent_led2 = (255 * percent_led2) / 100;
   int percent_led4 = 10; 
   int bitpercent_led4 = (255 * percent_led4) / 100;
-  int percent_led23 = 10; 
-  int bitpercent_led23 = (255 * percent_led23) / 100;
+  int percent_led13 = 10; 
+  int bitpercent_led13 = (255 * percent_led13) / 100;
 
   LED0_DUTYCYCLE = bitpercent_led0;
   LED2_DUTYCYCLE = bitpercent_led2;
   LED4_DUTYCYCLE = bitpercent_led4;
-  LED23_DUTYCYCLE = bitpercent_led23;
+  LED13_DUTYCYCLE = bitpercent_led13;
 }
 
 void ducycycle_m() { // Включения дальности 10км.
@@ -343,13 +344,13 @@ void ducycycle_m() { // Включения дальности 10км.
   int bitpercent_led2 = (255 * percent_led2) / 100;
   int percent_led4 = 100; 
   int bitpercent_led4 = (255 * percent_led4) / 100;
-  int percent_led23 = 100; 
-  int bitpercent_led23 = (255 * percent_led23) / 100;
+  int percent_led13 = 100; 
+  int bitpercent_led13 = (255 * percent_led13) / 100;
 
   LED0_DUTYCYCLE = bitpercent_led0;
   LED2_DUTYCYCLE = bitpercent_led2;
   LED4_DUTYCYCLE = bitpercent_led4;
-  LED23_DUTYCYCLE = bitpercent_led23;
+  LED13_DUTYCYCLE = bitpercent_led13;
 }
 
 void write_mode() // Запись данных о включенном фонаре в EEPROM.
