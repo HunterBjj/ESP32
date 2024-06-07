@@ -70,7 +70,7 @@ BluetoothSerial SerialBT;
 
 void setup() {
   Serial.begin(115200);
-  SerialBT.begin("KNO_AP5");
+  SerialBT.begin("SVETOVOI_OGON");
   Serial.println("The device started, now you can pair it with bluetooth!");
   
   ledcSetup(0, FREQ, RESOLUTION); // задаём настройки ШИМ-канала:     
@@ -113,7 +113,6 @@ void setup() {
     delay(500); 
   xTaskCreatePinnedToCore(Task2code, "Task2", 10000, NULL, 1, NULL,  1); 
     delay(500); 
-    
 }
 
 
@@ -164,7 +163,7 @@ void Task1code( void * pvParameters ){
       }
     }
     else {
-        glimps0();
+        low_led();
     }     
   }
 }
@@ -175,7 +174,7 @@ void Task2code( void * pvParameters ) {
     На этом ядре 1 передаются команды для приложения на микроконтроллер ESP32.
   */
   while(true) {
-      float lux = lightMeter.readLightLevel();
+      int lux = lightMeter.readLightLevel();
       float btr = analogRead(BATTERY);
       Serial.println("btr: " + String(btr) + " vlt");
       float volt = ((3.3 * btr) / 4095) * 3; 
@@ -183,7 +182,7 @@ void Task2code( void * pvParameters ) {
       SerialBT.print(String(volt) + " В");
       delay(210);
       Serial.println("Light: " + String(lux) + " lx");
-      SerialBT.print(String(lux) + " ЛК");
+      SerialBT.print(String(lux) + " люкс");
       delay(110);
       Serial.println(LED);
       SerialBT.print(LED);
@@ -229,14 +228,6 @@ void Task2code( void * pvParameters ) {
       ledcWrite(LED0, LOW);
       ledcWrite(LED2, LOW);
       ledcWrite(LED4, LOW);
-    }
-    else if(command == 'L') {
-      LED = 20;
-      write_led();
-      ledcWrite(LED0, LOW);
-      ledcWrite(LED2, LOW);
-      ledcWrite(LED4, LOW);
-      ledcWrite(LED13, LOW);
     }
     else if(command == 'P') {
       MODE = 'P';
@@ -305,6 +296,12 @@ void Task2code( void * pvParameters ) {
   }  
 }
 
+void low_led() {
+  ledcWrite(LED0, LOW);
+  ledcWrite(LED2, LOW);
+  ledcWrite(LED4, LOW);
+  ledcWrite(LED13, LOW);
+}
 
 void check_dutycle() {  //Включает нужный режим на фонаре.
   if(LED == 0) {
@@ -378,6 +375,10 @@ void loop() {
 // Функции режимов проблеска.
 void glimps0() { //Цифра является кодом режима, кодировку смотрите в комментариях выше. Цифра является кодом режима, кодировку смотрите в комментариях выше.
   ledcWrite(LED, DUTYCYCLE);
+  if(TESTGLIMPS == true) {
+    TESTGLIMPS = false;
+    delay(3000);
+  }
 }
 
 void glimps1() { // Однопроблесковый.
@@ -578,13 +579,9 @@ void glimps9() { //Южный.
       delay(400);
     ledcWrite(LED, DUTYCYCLE);
       delay(590);
-    ledcWrite(LED, LOW);
     if(TESTGLIMPS == false and (lux > 80 or checkLed != LED or GLIMPS != 9 or checkDutycycle != DUTYCYCLE)) {
       break;
     }
-      delay(400);
-    ledcWrite(LED, DUTYCYCLE);
-      delay(590);
     ledcWrite(LED, LOW);
       delay(400);
     ledcWrite(LED, DUTYCYCLE);
@@ -596,9 +593,13 @@ void glimps9() { //Южный.
     ledcWrite(LED, LOW);
       delay(400);
     ledcWrite(LED, DUTYCYCLE);
+      delay(590);
     if(TESTGLIMPS == false and (lux > 80 or checkLed != LED or GLIMPS != 9 or checkDutycycle != DUTYCYCLE)) {
       break;
     }
+    ledcWrite(LED, LOW);
+      delay(400);
+    ledcWrite(LED, DUTYCYCLE);
       delay(15000);
     ledcWrite(LED, LOW);
       delay(400);
