@@ -38,6 +38,7 @@ L - выключить
 #include "BluetoothSerial.h"
 #include "EEPROM.h"
 #include "esp_adc_cal.h"
+#include "esp32-hal-ledc.h"
 
 #define LED0 0 // Красный.
 #define LED2 2 // Желтый.
@@ -57,6 +58,9 @@ int LED2_DUTYCYCLE;
 int LED4_DUTYCYCLE;
 int LED13_DUTYCYCLE; 
 
+String text = "8888";
+
+
 TaskHandle_t Task1; // Создаем задачи.
 TaskHandle_t Task2;
 
@@ -72,17 +76,13 @@ void setup() {
   Serial.begin(115200);
   SerialBT.begin("SVETOVOI_OGON");
   Serial.println("The device started, now you can pair it with bluetooth!");
-  
-  ledcSetup(0, FREQ, RESOLUTION); // задаём настройки ШИМ-канала:     
-  ledcAttachPin(LED0, 0); // подключаем ШИМ-канал к пину светодиода 
-  ledcSetup(2, FREQ, RESOLUTION);     
-  ledcAttachPin(LED2, 2); 
-  ledcSetup(4, FREQ, RESOLUTION);     
-  ledcAttachPin(LED4, 4); 
-  ledcSetup(13, FREQ, RESOLUTION);     
-  ledcAttachPin(LED13, 13); 
+  //setCpuFrequencyMhz(8);
+  ledcAttach(0, FREQ, RESOLUTION); // задаём настройки ШИМ-канала:     
+  ledcAttach(2, FREQ, RESOLUTION);     
+  ledcAttach(4, FREQ, RESOLUTION);     
+  ledcAttach(13, FREQ, RESOLUTION);   
 
-  EEPROM.begin(128); // Инициализация EEPROM с размером 128 байт.
+  EEPROM.begin(64); // Инициализация EEPROM с размером 128 байт.
 
   if(EEPROM.read(2) == 80) { // Берем данные из энергосберегающей памяти. ASCII 80 = P.
     MODE = 'P';
@@ -104,6 +104,13 @@ void setup() {
       or EEPROM.read(1) == 9 or EEPROM.read(1) == 10 or EEPROM.read(1) == 11) {
     GLIMPS = EEPROM.read(1); // Берем данные из энергосберегающей памяти.
   }
+
+ if(EEPROM.readString(3) != "") {
+    text = EEPROM.readString(3);
+ }
+
+  Serial.println(text);
+
 
   Serial.println(DUTYCYCLE);
   Wire.begin();
@@ -178,25 +185,25 @@ void Task2code( void * pvParameters ) {
       float btr = analogRead(BATTERY);
       Serial.println("btr: " + String(btr) + " vlt");
       float volt = ((3.3 * btr) / 4095) * 3; 
-      Serial.println("Вольт:" + String(volt));
       SerialBT.print(String(volt) + " В");
-      delay(210);
-      Serial.println("Light: " + String(lux) + " lx");
+      delay(180);
       SerialBT.print(String(lux) + " люкс");
-      delay(110);
-      Serial.println(LED);
+      delay(180);
       SerialBT.print(LED);
-      delay(210);
+      delay(180);
       Serial.println("-" + String(GLIMPS));  // Добавляем - для кодировки, чтобы не было коллизии в кодировке.
-      delay(110);
       SerialBT.print("-" + String(GLIMPS));
-      delay(210);
+      delay(180);
       SerialBT.print(MODE);
+      delay(180);
+      SerialBT.print("PS" + String(text));
+      Serial.println(String(text)); 
   // Оставляем один знак после запятой, для правильной кодировки.
-      delay(410);
+      delay(280);
   if(SerialBT.available()) { // Прием данных с андройд приложения и их дальнейшая обработка. 
     char command = SerialBT.read();
-    Serial.println(command);
+    Serial.println(String(command)); 
+    //Serial.println(command);
     if(command == 'R') { 
       LED = 0;
       write_led();
@@ -292,8 +299,22 @@ void Task2code( void * pvParameters ) {
       GLIMPS = 11;
       write_glimps();
     }
-  }   
+  
+   else if(command == 'I') {
+     text = SerialBT.readStringUntil('\n');
+     text.remove(text.length(), 2);
+      write_text();
+      Serial.println( "passwprd"+ String(text));
+    }
+    
+  }
   }  
+}
+
+void write_text() {
+  EEPROM.writeString(3, text);
+  EEPROM.commit();
+  //Serial.println((EEPROM.read(3)).length());
 }
 
 void low_led() {
